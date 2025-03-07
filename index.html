@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spracherkennung Challenge</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .game-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .text-display {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .language-btn {
+            background-color: #b7b5bc;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .language-btn:hover {
+            background-color: #a5d1dc;
+        }
+        
+        .language-btn.selected {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .hint-container {
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .hint-btn {
+            background-color: #f39c12;
+        }
+        
+        .hint-btn:hover {
+            background-color: #e67e22;
+        }
+        
+        .hint-text {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+            display: none;
+        }
+        
+        .search-container {
+            margin-bottom: 15px;
+        }
+        
+        #languageSearch {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spracherkennung Challenge</h1>
+    
+    <div class="game-container">
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">Gesamt</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="correctCount">0</div>
+                <div class="stat-label">Richtig</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="accuracy">0%</div>
+                <div class="stat-label">Genauigkeit</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="streak">0</div>
+                <div class="stat-label">Streak</div>
+            </div>
+        </div>
+        
+        <h2>Welche Sprache ist das?</h2>
+        <div class="text-display" id="textDisplay">
+            Lade Text...
+        </div>
+        
+        <div class="search-container">
+            <input type="text" id="languageSearch" placeholder="Sprache suchen...">
+        </div>
+        
+        <div class="language-grid" id="languageGrid">
+            <!-- Sprachen werden hier dynamisch eingefügt -->
+        </div>
+        
+        <div class="hint-container">
+            <button id="hintButton" class="hint-btn">Hinweis anzeigen</button>
+            <div class="hint-text" id="hintText"></div>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="controls">
+            <button id="checkButton" disabled>Überprüfen</button>
+            <button id="nextButton">Nächster Text</button>
+        </div>
+    </div>
+
+    <script>
+        const languages = {
+            "Deutsch": "de",
+            "Englisch": "en",
+            "Französisch": "fr",
+            "Spanisch": "es",
+            "Italienisch": "it",
+            "Niederländisch": "nl",
+            "Portugiesisch": "pt",
+            "Japanisch": "ja",
+            "Koreanisch": "ko",
+            "Thailändisch": "th",
+            "Indonesisch": "id",
+            "Griechisch": "el",
+            "Polnisch": "pl",
+            "Tschechisch": "cs",
+            "Dänisch": "da",
+            "Schwedisch": "sv",
+            "Finnisch": "fi",
+            "Norwegisch": "no",
+            "Ungarisch": "hu",
+            "Rumänisch": "ro",
+            "Kroatisch": "hr",
+            "Türkisch": "tr",
+            "Arabisch": "ar",
+            "Hebräisch": "he",
+            "Bengali": "bn",
+            "Hindi": "hi",
+            "Bulgarisch": "bg", 
+            "Khmer": "km", 
+            "Filipino": "tl",
+            "Estnisch": "et", 
+            "Lettisch": "lv",
+            "Litauisch": "lt",
+            "Albanisch": "sq"
+        };
+
+        // Sprachspezifische Hinweise
+        const languageHints = {
+            "de": "Verwendet Umlaute (ä, ö, ü) und ß. Viele zusammengesetzte Substantive.",
+            "en": "Einfache Grammatik, wenige Akzente, viele Wörter enden mit -ing, -ed, -ly.",
+            "fr": "Akzente wie é, è, ê, ç. Wörter enden oft mit -ent, -ez, -er.",
+            "es": "Enthält ñ, umgekehrte Frage-/Ausrufezeichen (¿, ¡). Viele Wörter enden mit -ar, -er, -ir.",
+            "it": "Viele Wörter enden mit Vokalen. Verwendet Akzente wie à, è, ì, ò, ù.",
+            "nl": "Enthält Kombinationen wie 'ij', 'oe', 'ui'. Lange zusammengesetzte Wörter.",
+            "pt": "Verwendet ã, õ, ç. Ähnlich zu Spanisch, aber mit mehr Nasallauten.",
+            "ja": "Verwendet drei Schriftsysteme: Kanji (漢字), Hiragana (ひらがな) und Katakana (カタカナ).",
+            "ko": "Verwendet Hangul-Schrift mit kreisförmigen und eckigen Formen (한글).",
+            "th": "Schrift mit vielen Kreisen und Kurven. Keine Leerzeichen zwischen Wörtern.",
+            "id": "Lateinisches Alphabet ohne viele Sonderzeichen. Wörter wie 'yang', 'dan', 'untuk' sind häufig.",
+            "el": "Griechisches Alphabet (α, β, γ, δ, ε, ζ, η, θ, ι, κ, λ, μ, ν, ξ, ο, π, ρ, σ, τ, υ, φ, χ, ψ, ω).",
+            "pl": "Enthält ą, ć, ę, ł, ń, ó, ś, ź, ż. Viele Konsonantenhäufungen.",
+            "cs": "Verwendet Häkchen (č, ř, š, ž) und Striche (á, é, í, ó, ú, ý).",
+            "da": "Enthält æ, ø, å. Ähnlich zu Norwegisch und Schwedisch.",
+            "sv": "Verwendet å, ä, ö. Ähnlich zu Dänisch und Norwegisch.",
+            "fi": "Viele Doppelvokale und -konsonanten. Wörter können sehr lang sein.",
+            "no": "Enthält æ, ø, å. Ähnlich zu Dänisch und Schwedisch.",
+            "hu": "Verwendet Akzente wie á, é, í, ó, ö, ő, ú, ü, ű. Lange Wörter durch Agglutination.",
+            "ro": "Enthält ă, â, î, ș, ț. Ähnlich zu Italienisch und Französisch.",
+            "hr": "Verwendet č, ć, đ, š, ž. Ähnlich zu anderen slawischen Sprachen.",
+            "tr": "Enthält ç, ğ, ı, ö, ş, ü. Vokalharmonie ist ein wichtiges Merkmal.",
+            "ar": "Rechts-nach-links Schrift mit verbundenen Buchstaben. Keine Großbuchstaben.",
+            "he": "Rechts-nach-links Schrift. Keine Vokale im Text, nur Konsonanten.",
+            "bn": "Runde, geschwungene Schrift mit einer horizontalen Linie oben.",
+            "hi": "Devanagari-Schrift mit horizontaler Linie oben. Ähnlich zu Sanskrit.",
+            "bg": "Kyrillisches Alphabet, ähnlich zu Russisch, aber mit einigen unterschiedlichen Buchstaben.",
+            "km": "Komplexe Schrift mit runden Formen und vielen Kurven. Keine Leerzeichen zwischen Wörtern.",
+            "tl": "Lateinisches Alphabet mit spanischem Einfluss. Wörter wie 'ng', 'mga', 'na' sind häufig.",
+            "et": "Verwendet õ, ä, ö, ü. Viele Doppelvokale und lange Wörter.",
+            "lv": "Enthält ā, č, ē, ģ, ī, ķ, ļ, ņ, š, ū, ž. Wörter enden oft mit -s.",
+            "lt": "Verwendet ą, č, ę, ė, į, š, ų, ū, ž. Betont Diphthonge.",
+            "sq": "Lateinisches Alphabet mit ë, ç. Viele Wörter enthalten 'sh', 'th', 'xh', 'zh'."
+        };
+
+        // Beispieltexte für jede Sprache
+        const sampleTexts = {
+            "de": [
+                "Die deutsche Sprache ist bekannt für ihre langen zusammengesetzten Substantive und präzisen Ausdrücke.",
+                "In Deutschland gibt es viele schöne Schlösser und historische Städte zu besichtigen.",
+                "Das Wetter heute ist wirklich schön, wir könnten einen Spaziergang im Park machen.",
+                "Die Effizienz und Pünktlichkeit sind wichtige Werte in der deutschen Kultur.",
+                "Ich hätte gerne ein Stück Schwarzwälder Kirschtorte zum Nachtisch, bitte."
+            ],
+            "en": [
+                "The English language is spoken by millions of people around the world as either a first or second language.",
+                "Would you like to go to the movies tonight? They're showing a new action film.",
+                "I've been working on this project for several weeks and it's finally coming together.",
+                "The weather forecast predicts rain tomorrow, so don't forget to bring an umbrella.",
+                "She's studying computer science at university and hopes to work in artificial intelligence."
+            ],
+            "fr": [
+                "La langue française est connue pour sa beauté et son élégance dans le monde entier.",
+                "Je voudrais réserver une table pour deux personnes ce soir, s'il vous plaît.",
+                "Les Français adorent passer du temps à table et discuter de politique et de philosophie.",
+                "Paris est souvent appelée la Ville Lumière en raison de son rôle pendant le siècle des Lumières.",
+                "Après le dîner, nous pourrions aller voir un film au cinéma du quartier."
+            ],
+            "es": [
+                "El idioma español es hablado por más de 460 millones de personas en todo el mundo.",
+                "¿Te gustaría ir a tomar un café conmigo esta tarde después del trabajo?",
+                "Barcelona es una ciudad hermosa con arquitectura impresionante y playas maravillosas.",
+                "La paella valenciana es uno de los platos más conocidos de la gastronomía española.",
+                "Mañana vamos a visitar el museo del Prado para ver las obras de Goya y Velázquez.",
+            ],
+            "it": [
+                "La lingua italiana è conosciuta per la sua musicalità e il suo ritmo melodico.",
+                "Vorrei un espresso e un cornetto alla crema, per favore.",
+                "Roma è una città eterna con monumenti antichi e una storia ricchissima.",
+                "La cucina italiana è famosa in tutto il mondo per la pasta, la pizza e il gelato.",
+                "Domani andremo in vacanza sulla costa amalfitana per una settimana."
+            ],
+            "nl": [
+                "De Nederlandse taal wordt gesproken in Nederland en delen van België.",
+                "Ik zou graag een fiets willen huren om de stad te verkennen.",
+                "Amsterdam staat bekend om zijn grachten, musea en historische gebouwen.",
+                "Het weer in Nederland kan snel veranderen, dus neem altijd een paraplu mee.",
+                "Na het werk ga ik meestal boodschappen doen in de supermarkt."
+            ],
+            "pt": [
+                "A língua portuguesa é falada em Portugal, Brasil e vários países africanos.",
+                "Gostaria de reservar uma mesa para duas pessoas esta noite, por favor.",
+                "Lisboa é conhecida pelas suas colinas, elétricos amarelos e pastelarias.",
+                "A música fado é uma expressão importante da cultura portuguesa.",
+                "No próximo fim de semana, vamos visitar o Porto e provar o vinho do Porto."
+            ],
+            "ja": [
+                "日本語は日本で話されている言語で、漢字、ひらがな、カタカナの3つの文字体系があります。",
+                "東京は日本の首都で、現代的な高層ビルと伝統的な寺院が共存しています。",
+                "日本料理は、新鮮な食材と季節感を大切にすることで知られています。",
+                "桜の季節は日本で最も美しい時期の一つで、多くの人々が花見を楽しみます。",
+                "明日は友達と一緒に京都の古い寺院を訪れる予定です。"
+            ],
+            "ko": [
+                "한국어는 한국에서 사용되는 언어로, 한글이라는 독특한 문자 체계를 가지고 있습니다.",
+                "서울은 한국의 수도로, 현대적인 도시 경관과 전통적인 궁궐이 공존합니다.",
+                "한국 요리는 김치, 불고기, 비빔밥 등 다양한 맛으로 유명합니다.",
+                "한국의 대중문화는 K-pop과 한국 드라마를 통해 전 세계적으로 인기를 얻고 있습니다.",
+                "내일은 친구들과 함께 부산 해변에 가서 휴식을 취할 계획입니다."
+            ],
+            "th": [
+                "ภาษาไทยเป็นภาษาที่ใช้ในประเทศไทย มีตัวอักษรที่เป็นเอกลักษณ์และระบบเสียงวรรณยุกต์",
+                "กรุงเทพมหานครเป็นเมืองหลวงของประเทศไทย มีวัดวาอารามและตลาดน้ำที่มีชื่อเสียง",
+                "อาหารไทยเป็นที่รู้จักจากรสชาติที่เผ็ด เปรี้ยว หวาน และเค็ม ที่ผสมผสานกันอย่างลงตัว",
+                "เทศกาลสงกรานต์เป็นปีใหม่ไทยที่มีการเล่นน้ำและทำบุญที่วัด",
+                "พรุ่งนี้เราจะไปเที่ยวเกาะพีพีและดำน้ำดูปะการังที่สวยงาม"
+            ],
+            "id": [
+                "Bahasa Indonesia adalah bahasa resmi Republik Indonesia dan merupakan bahasa yang digunakan oleh lebih dari 200 juta orang.",
+                "Jakarta adalah ibu kota Indonesia yang terkenal dengan kemacetan lalu lintas dan pusat perbelanjaan modern.",
+                "Masakan Indonesia terkenal dengan rempah-rempah dan bumbu yang kaya, seperti rendang dan nasi goreng.",
+                "Bali adalah tujuan wisata populer dengan pantai indah, kuil Hindu, dan budaya yang kaya.",
+                "Besok kami akan mengunjungi Candi Borobudur, salah satu candi Buddha terbesar di dunia."
+            ],
+            "el": [
+                "Η ελληνική γλώσσα είναι μία από τις παλαιότερες γλώσσες στον κόσμο με ιστορία χιλιάδων ετών.",
+                "Η Αθήνα είναι η πρωτεύουσα της Ελλάδας και φιλοξενεί την Ακρόπολη και πολλά αρχαία μνημεία.",
+                "Η ελληνική κουζίνα είναι γνωστή για το ελαιόλαδο, τις ελιές, το γιαούρτι και τη φέτα.",
+                "Τα ελληνικά νησιά, όπως η Σαντορίνη και η Μύκονος, είναι δημοφιλείς τουριστικοί προορισμοί.",
+                "Αύριο θα επισκεφτούμε το αρχαίο θέατρο της Επιδαύρου, γνωστό για την εξαιρετική ακουστική του."
+            ],
+            "pl": [
+                "Język polski jest językiem słowiańskim używanym głównie w Polsce przez około 40 milionów ludzi.",
+                "Warszawa jest stolicą Polski i została odbudowana po zniszczeniach II wojny światowej.",
+                "Polska kuchnia słynie z pierogów, bigosu i żurku, które są tradycyjnymi potrawami.",
+                "Kraków to historyczne miasto z pięknym rynkiem i zamkiem królewskim na Wawelu.",
+                "Jutro pojedziemy w góry Tatry, aby podziwiać piękne krajobrazy i pochodzić po szlakach."
+            ],
+            "cs": [
+                "Český jazyk patří mezi západoslovanské jazyky a je úředním jazykem České republiky.",
+                "Praha je hlavním městem České republiky a je známá svým historickým centrem a Karlovým mostem.",
+                "Česká kuchyně je známá svými knedlíky, gulášem a pivem, které má dlouhou tradici.",
+                "Karlštejn je jeden z nejznámějších českých hradů, který byl založen Karlem IV.",
+                "Zítra pojedeme do Českého Krumlova, krásného města zapsaného na seznamu UNESCO."
+            ],
+            "da": [
+                "Det danske sprog er et nordgermansk sprog, der primært tales i Danmark.",
+                "København er hovedstaden i Danmark og kendt for Den Lille Havfrue og Tivoli.",
+                "Dansk mad omfatter smørrebrød, frikadeller og rød grød med fløde.",
+                "Danmark er kendt for sit design, arkitektur og fokus på bæredygtighed.",
+                "I morgen skal vi besøge Kronborg Slot, som er kendt fra Shakespeares Hamlet."
+            ],
+            "sv": [
+                "Svenska är ett nordgermanskt språk som talas främst i Sverige och delar av Finland.",
+                "Stockholm är Sveriges huvudstad och är byggd på flera öar med många broar.",
+                "Svensk mat inkluderar köttbullar, gravlax och kanelbullar som populära rätter.",
+                "Sverige är känt för sina vackra landskap, från skogar och sjöar till fjäll i norr.",
+                "Imorgon ska vi besöka Vasamuseet för att se det berömda skeppet som sjönk på sin jungfrufärd."
+            ],
+            "fi": [
+                "Suomen kieli on suomalais-ugrilainen kieli, jota puhutaan pääasiassa Suomessa.",
+                "Helsinki on Suomen pääkaupunki ja tunnettu arkkitehtuuristaan ja saaristostaan.",
+                "Suomalainen ruoka sisältää karjalanpiirakoita, lohikeittoa ja ruisleipää.",
+                "Suomi tunnetaan tuhansista järvistään, saunakulttuuristaan ja revontulista.",
+                "Huomenna menemme vierailemaan Suomenlinnaan, joka on UNESCOn maailmanperintökohde."
+            ],
+            "no": [
+                "Norsk er et nordgermansk språk som hovedsakelig snakkes i Norge.",
+                "Oslo er hovedstaden i Norge og kjent for sine museer og nærhet til fjorder og skoger.",
+                "Norsk mat inkluderer fiskeboller, brunost og fårikål som tradisjonelle retter.",
+                "Norge er kjent for sine spektakulære fjorder, fjell og midnattssol om sommeren.",
+                "I morgen skal vi besøke Vigelandsparken for å se de berømte skulpturene av Gustav Vigeland."
+            ],
+            "hu": [
+                "A magyar nyelv egy finnugor nyelv, amelyet főként Magyarországon beszélnek.",
+                "Budapest Magyarország fővárosa, amelyet a Duna folyó szel ketté Budára és Pestre.",
+                "A magyar konyha híres a gulyáslevesről, a pörköltről és a kürtőskalácsról.",
+                "Magyarország ismert termálfürdőiről, boráról és gazdag népzenei hagyományairól.",
+                "Holnap ellátogatunk a Balaton-tóhoz, amely Közép-Európa legnagyobb tava."
+            ],
+            "ro": [
+                "Limba română este o limbă romanică vorbită în principal în România și Republica Moldova.",
+                "București este capitala României și este cunoscut pentru Palatul Parlamentului, a doua cea mai mare clădire administrativă din lume.",
+                "Bucătăria românească include sarmale, mămăligă și mici ca preparate tradiționale.",
+                "România este cunoscută pentru Carpați, Delta Dunării și castelele din Transilvania.",
+                "Mâine vom vizita Castelul Bran, adesea asociat cu legenda lui Dracula."
+            ],
+            "hr": [
+                "Hrvatski jezik je južnoslavenski jezik koji se govori uglavnom u Hrvatskoj.",
+                "Zagreb je glavni grad Hrvatske i poznat je po svojoj srednjovjekovnoj arhitekturi i muzejima.",
+                "Hrvatska kuhinja uključuje dalmatinsku pašticadu, štrukle i crni rižot kao tradicionalna jela.",
+                "Hrvatska je poznata po svojoj prekrasnoj obali Jadranskog mora i brojnim otocima.",
+                "Sutra ćemo posjetiti Nacionalni park Plitvička jezera, poznat po svojim prekrasnim vodopadima."
+            ],
+            "tr": [
+                "Türkçe, Türkiye'de ve çevre bölgelerde konuşulan Türk dilidir.",
+                "İstanbul, Türkiye'nin en büyük şehri ve Boğaz'ın iki yakasında yer alan tarihi bir şehirdir.",
+                "Türk mutfağı kebap, baklava ve Türk kahvesi gibi lezzetleriyle ünlüdür.",
+                "Türkiye, antik kalıntıları, plajları ve Kapadokya'daki peri bacaları ile tanınır.",
+                "Yarın Efes antik kentini ziyaret edeceğiz, bu Roma döneminden kalma etkileyici bir yerdir."
+            ],
+            "ar": [
+                "اللغة العربية هي لغة سامية تتحدث بها أكثر من 400 مليون شخص في العالم.",
+                "القاهرة هي عاصمة مصر وتشتهر بالأهرامات وأبو الهول والمتحف المصري.",
+                "المطبخ العربي غني بالتوابل والنكهات، مثل الكسكس والحمص والفلافل.",
+                "الثقافة العربية معروفة بالشعر والموسيقى والفن الإسلامي والخط العربي.",
+                "غدًا سنزور مدينة مراكش لاستكشاف الأسواق التقليدية والحدائق الجميلة."
+            ],
+            "he": [
+                "עברית היא שפה שמית שמדוברת בעיקר בישראל ויש לה היסטוריה של אלפי שנים.",
+                "ירושלים היא בירת ישראל ועיר קדושה ליהדות, לנצרות ולאסלאם.",
+                "המטבח הישראלי כולל מאכלים כמו חומוס, פלאפל, שקשוקה וסלט ישראלי.",
+                "ישראל ידועה בחדשנות הטכנולוגית שלה, באתרים היסטוריים ובים המלח.",
+                "מחר נבקר בתל אביב, עיר תוססת עם חופים יפים ותרבות עירונית תוססת."
+            ],
+            "bn": [
+                "বাংলা ভাষা বাংলাদেশ এবং ভারতের পশ্চিমবঙ্গ রাজ্যের প্রধান ভাষা।",
+                "ঢাকা বাংলাদেশের রাজধানী এবং একটি ঐতিহাসিক ও সাংস্কৃতিক কেন্দ্র।",
+                "বাংলা খাবারে মাছ, ভাত এবং মশলাযুক্ত তরকারি প্রধান উপাদান।",
+                "বাংলাদেশ তার সুন্দরবন, চা বাগান এবং সমুদ্র সৈকতের জন্য বিখ্যাত।",
+                "আগামীকাল আমরা লালবাগ কেল্লা দেখতে যাব, যা মুঘল যুগের একটি ঐতিহাসিক স্থাপত্য।"
+            ],
+            "hi": [
+                "हिंदी भारत की प्रमुख भाषाओं में से एक है और दुनिया भर में लगभग 600 मिलियन लोगों द्वारा बोली जाती है।",
+                "नई दिल्ली भारत की राजधानी है और लाल किला, कुतुब मीनार जैसे ऐतिहासिक स्मारकों के लिए प्रसिद्ध है।",
+                "भारतीय व्यंजनों में मसाले, दाल, रोटी और चावल का उपयोग होता है, जिससे विविध स्वाद मिलते हैं।",
+                "भारत अपनी समृद्ध संस्कृति, विविध परंपराओं और ताज महल जैसे प्रतिष्ठित स्मारकों के लिए जाना जाता है।",
+                "कल हम वाराणसी जाएंगे, जो गंगा नदी के किनारे स्थित एक प्राचीन और पवित्र शहर है।"
+            ],
+            "bg": [
+                "Българският език е южнославянски език, който се говори предимно в България.",
+                "София е столицата на България и е известна със своята архитектура и планината Витоша наблизо.",
+                "Българската кухня включва баница, шопска салата и кисело мляко като традиционни ястия.",
+                "България е известна със своите красиви плажове по Черно море и планински курорти.",
+                "Утре ще посетим Рилския манастир, който е най-големият православен манастир в България."
+            ],
+            "km": [
+                "ភាសាខ្មែរគឺជាភាសាផ្លូវការនៃប្រទេសកម្ពុជា និងត្រូវបាននិយាយដោយប្រជាជនប្រមាណ ១៦ លាននាក់។",
+                "ភ្នំពេញគឺជារាជធានីនៃប្រទេសកម្ពុជា និងមានព្រះបរមរាជវាំង និងវត្តភ្នំដ៏ល្បីល្បាញ។",
+                "អាហារខ្មែររួមមានអាម៉ុក ប្រហុក និងគ្រឿងសម្លកកូរជាម្ហូបប្រពៃណី។",
+                "កម្ពុជាល្បីល្បាញដោយសារប្រាសាទអង្គរវត្ត ដែលជាប្រាសាទសាសនាដ៏ធំបំផុតក្នុងពិភពលោក។",
+                "ថ្ងៃស្អែកយើងនឹងទៅលេងប្រាសាទបាយ័ន ដែលមានមុខប្រាសាទថ្មដ៏ល្បីល្បាញ។"
+            ],
+            "tl": [
+                "Ang wikang Filipino ay ang pambansang wika ng Pilipinas at batay sa wikang Tagalog.",
+                "Maynila ang kabisera ng Pilipinas at kilala sa mga makasaysayang lugar tulad ng Intramuros.",
+                "Ang pagkaing Pilipino ay kilala sa adobo, sinigang, at lechon bilang mga tradisyonal na putahe.",
+                "Ang Pilipinas ay kilala sa magagandang dalampasigan, bulkan, at mga kagubatan.",
+                "Bukas, pupunta kami sa Palawan para makita ang Underground River at ang mga magagandang isla."
+            ],
+            "et": [
+                "Eesti keel on soome-ugri keel, mida räägitakse peamiselt Eestis.",
+                "Tallinn on Eesti pealinn ja tuntud oma keskaegse vanalinna poolest, mis kuulub UNESCO maailmapärandi nimistusse.",
+                "Eesti toit hõlmab verivorsti, mulgikapsaid ja kiluvõileiba traditsiooniliste roogadena.",
+                "Eesti on tuntud oma kaunite metsade, soode ja rohkem kui 1500 saare poolest.",
+                "Homme külastame Lahemaa rahvusparki, mis on Eesti suurim rahvuspark."
+            ],
+            "lv": [
+                "Latviešu valoda ir baltu valoda, ko galvenokārt runā Latvijā.",
+                "Rīga ir Latvijas galvaspilsēta un pazīstama ar savu jūgendstila arhitektūru un vecpilsētu.",
+                "Latviešu virtuve ietver rupjmaizi, pelēkos zirņus un skābu kāpostu zupu kā tradicionālos ēdienus.",
+                "Latvija ir pazīstama ar saviem skaistajiem mežiem, pludmalēm un Dziesmu svētku tradīciju.",
+                "Rīt mēs apmeklēsim Rundāles pili, kas ir viens no skaistākajiem baroka stila pieminekļiem Latvijā."
+            ],
+            "lt": [
+                "Lietuvių kalba yra baltų kalba, kuria daugiausia kalbama Lietuvoje.",
+                "Vilnius yra Lietuvos sostinė ir garsėja savo senamiesčiu, kuris įtrauktas į UNESCO pasaulio paveldo sąrašą.",
+                "Lietuviška virtuvė apima cepelinus, šaltibarščius ir skilandį kaip tradicinius patiekalus.",
+                "Lietuva žinoma dėl savo gražių miškų, Kuršių nerijos ir gintaro.",
+                "Rytoj aplankysime Trakų pilį, kuri yra viduramžių pilis, pastatyta ant ežero salos."
+            ],
+            "sq": [
+                "Gjuha shqipe është një gjuhë indo-evropiane që flitet kryesisht në Shqipëri dhe Kosovë.",
+                "Tirana është kryeqyteti i Shqipërisë dhe është e njohur për ndërtesat me ngjyra dhe sheshet e gjalla.",
+                "Kuzhina shqiptare përfshin tavë kosi, fërgesë dhe byrek si pjata tradicionale.",
+                "Shqipëria është e njohur për plazhet e saj të bukura në Rivierën Shqiptare dhe malet e larta.",
+                "Nesër do të vizitojmë qytetin e Beratit, i cili është i njohur si 'Qyteti i një mbi një dritareve' dhe është në listën e UNESCO-s."
+            ]
+        };
+
+        let currentLanguage = "";
+        let selectedLanguage = "";
+        let correctCount = 0;
+        let totalCount = 0;
+        let currentStreak = 0;
+        let allLanguages = Object.keys(languages);
+
+        // Funktion zum Mischen eines Arrays (Fisher-Yates-Algorithmus)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Funktion zum Generieren eines neuen Textes
+        function generateNewText() {
+            // Zufällige Sprache auswählen
+            currentLanguage = allLanguages[Math.floor(Math.random() * allLanguages.length)];
+            
+            // Zufälligen Text aus der ausgewählten Sprache wählen
+            const texts = sampleTexts[languages[currentLanguage]];
+            const randomText = texts[Math.floor(Math.random() * texts.length)];
+            
+            // Text anzeigen
+            document.getElementById("textDisplay").textContent = randomText;
+            
+            // Zurücksetzen der Auswahl
+            selectedLanguage = "";
+            document.querySelectorAll(".language-btn").forEach(btn => {
+                btn.classList.remove("selected");
+            });
+            
+            // Hinweis zurücksetzen
+            document.getElementById("hintText").style.display = "none";
+            document.getElementById("hintText").textContent = "";
+            
+            // Ergebnis zurücksetzen
+            document.getElementById("result").style.display = "none";
+            
+            // Check-Button deaktivieren
+            document.getElementById("checkButton").disabled = true;
+        }
+
+        // Funktion zum Überprüfen der Antwort
+        function checkAnswer() {
+            totalCount++;
+            document.getElementById("totalCount").textContent = totalCount;
+            
+            const resultElement = document.getElementById("result");
+            
+            if (selectedLanguage === currentLanguage) {
+                correctCount++;
+                currentStreak++;
+                resultElement.textContent = "Richtig! Das war " + currentLanguage + ".";
+                resultElement.className = "result correct";
+            } else {
+                currentStreak = 0;
+                resultElement.textContent = "Falsch! Das war " + currentLanguage + ", nicht " + selectedLanguage + ".";
+                resultElement.className = "result incorrect";
+            }
+            
+            document.getElementById("correctCount").textContent = correctCount;
+            document.getElementById("accuracy").textContent = Math.round((correctCount / totalCount) * 100) + "%";
+            document.getElementById("streak").textContent = currentStreak;
+            
+            resultElement.style.display = "block";
+        }
+
+        // Funktion zum Anzeigen eines Hinweises
+        function showHint() {
+            const hintText = document.getElementById("hintText");
+            hintText.textContent = languageHints[languages[currentLanguage]];
+            hintText.style.display = "block";
+        }
+
+        // Funktion zum Filtern der Sprachen basierend auf der Suche
+        function filterLanguages() {
+            const searchTerm = document.getElementById("languageSearch").value.toLowerCase();
+            const languageButtons = document.querySelectorAll(".language-btn");
+            
+            languageButtons.forEach(button => {
+                const languageName = button.textContent.toLowerCase();
+                if (languageName.includes(searchTerm)) {
+                    button.style.display = "block";
+                } else {
+                    button.style.display = "none";
+                }
+            });
+        }
+
+        // Event-Listener für die Suchfunktion
+        document.getElementById("languageSearch").addEventListener("input", filterLanguages);
+
+        // Sprachen-Buttons erstellen
+        const languageGrid = document.getElementById("languageGrid");
+        shuffleArray(allLanguages).forEach(language => {
+            const button = document.createElement("button");
+            button.textContent = language;
+            button.className = "language-btn";
+            button.addEventListener("click", function() {
+                // Vorherige Auswahl entfernen
+                document.querySelectorAll(".language-btn").forEach(btn => {
+                    btn.classList.remove("selected");
+                });
+                
+                // Neue Auswahl markieren
+                this.classList.add("selected");
+                selectedLanguage = language;
+                
+                // Check-Button aktivieren
+                document.getElementById("checkButton").disabled = false;
+            });
+            languageGrid.appendChild(button);
+        });
+
+        // Event-Listener für Buttons
+        document.getElementById("checkButton").addEventListener("click", checkAnswer);
+        document.getElementById("nextButton").addEventListener("click", generateNewText);
+        document.getElementById("hintButton").addEventListener("click", showHint);
+
+        // Ersten Text generieren
+        generateNewText();
+    </script>
+</body>
+</html>
